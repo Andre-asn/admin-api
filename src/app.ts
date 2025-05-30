@@ -15,6 +15,7 @@ app.get('/', (req: Request, res: Response) => {
       availableEndpoints: {
         welcome: 'GET / - This welcome message',
         allDoctors: 'GET /api/doctors - Get all doctors',
+        createDoctors: 'POST /api/doctors - Create a new doctor',
         oneDoctor: 'GET /api/doctors/:id - Get specific doctor by ID'
       },
       examples: [
