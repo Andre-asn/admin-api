@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
+import { IGetUserAuthInfoRequest } from '../types/express/IGetUserAuthInfoRequest';
 
 export const getDoctors = async (_req: Request, res: Response): Promise<void> => {
     try {
@@ -162,10 +163,9 @@ export const getDoctorById = async (req: Request, res: Response): Promise<void> 
     }
 };
 
-export const createDoctor = async (req: Request, res: Response): Promise<void> => {
+export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response): Promise<void> => {
     try {
         const {
-            userId,
             specialization,
             licenseNumber,
             yearsOfExperience,
@@ -174,6 +174,12 @@ export const createDoctor = async (req: Request, res: Response): Promise<void> =
             yearsOfEducation,
             address
         } = req.body;
+
+        const userId = req.user?.id;
+        if (!userId) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
 
         // First, create the doctor record
         const { data: doctor, error: doctorError } = await supabase
@@ -192,13 +198,19 @@ export const createDoctor = async (req: Request, res: Response): Promise<void> =
             .single();
         
         if (doctorError) {
-            console.error('Error creating doctor:', doctorError);
             res.status(500).json({
                 success: false,
-                message: 'Error creating doctor record'
+                message: 'Error creating doctor record',
+                error: doctorError.message
             });
             return;
         }
+
+        // Update the user's role to 'doctor'
+        await supabase
+            .from('users')
+            .update({ role: 'doctor' })
+            .eq('id', userId);
 
         // If address is provided, create the address record
         if (address) {
@@ -214,23 +226,17 @@ export const createDoctor = async (req: Request, res: Response): Promise<void> =
                 }]);
 
             if (addressError) {
-                console.error('Error creating address:', addressError);
                 // Note: We don't return here, as the doctor was created successfully
             }
         }
 
         // Create initial approval record
-        const { error: approvalError } = await supabase
+        await supabase
             .from('approvals')
             .insert([{
                 doctor_id: doctor.doctor_id,
                 status: 'pending'
             }]);
-
-        if (approvalError) {
-            console.error('Error creating approval record:', approvalError);
-            // Note: We don't return here, as the doctor was created successfully
-        }
 
         // Fetch the complete doctor record with all relations
         const { data: completeDoctor, error: fetchError } = await supabase
@@ -260,10 +266,10 @@ export const createDoctor = async (req: Request, res: Response): Promise<void> =
             .single();
 
         if (fetchError) {
-            console.error('Error fetching complete doctor record:', fetchError);
             res.status(500).json({
                 success: false,
-                message: 'Doctor created but error fetching complete record'
+                message: 'Doctor created but error fetching complete record',
+                error: fetchError.message
             });
             return;
         }
@@ -277,7 +283,7 @@ export const createDoctor = async (req: Request, res: Response): Promise<void> =
             yearsOfExperience: completeDoctor.years_of_experience,
             institution: completeDoctor.institution,
             degree: completeDoctor.degree,
-            yearsOfEducation: completeDoctor.years_of_education,
+            yearsOfEducation: completeDoctor.years_of_edu,
             status: completeDoctor.status,
             createdAt: completeDoctor.created_at,
             updatedAt: completeDoctor.updated_at,
@@ -291,15 +297,15 @@ export const createDoctor = async (req: Request, res: Response): Promise<void> =
 
         res.status(201).json({
             success: true,
-            message: 'Doctor created successfully',
+            message: 'Doctor profile created and user upgraded to doctor',
             data: formattedDoctor
         });
 
-    } catch (error) {
-        console.error('Error in createDoctor:', error);
+    } catch (error: any) {
         res.status(500).json({
             success: false,
-            message: 'Error creating doctor'
+            message: 'Error creating doctor',
+            error: error.message
         });
     }
 };
