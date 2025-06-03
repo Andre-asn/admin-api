@@ -46,4 +46,4 @@ export interface Approval {
     // Joined fields
     reviewerName?: string;
     doctorName?: string;
-}
+  }

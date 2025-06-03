@@ -1,5 +1,6 @@
 import express, { Express, Request, Response } from 'express';
 import doctorRoutes from './routes/doctorRoutes';
+import authRoutes from './routes/authRoutes';
 
 const app: Express = express();
 
@@ -16,16 +17,23 @@ app.get('/', (req: Request, res: Response) => {
         welcome: 'GET / - This welcome message',
         allDoctors: 'GET /api/doctors - Get all doctors',
         createDoctors: 'POST /api/doctors - Create a new doctor',
-        oneDoctor: 'GET /api/doctors/:id - Get specific doctor by ID'
+        oneDoctor: 'GET /api/doctors/:id - Get specific doctor by ID',
+        auth: {
+          register: 'POST /api/auth/register',
+          login: 'POST /api/auth/login',
+          me: 'GET /api/auth/me'
+        }
       },
       examples: [
         'Try: GET /api/doctors',
         'Try: GET /api/doctors/1',
-        'Try: GET /api/doctors/2'
+        'Try: POST /api/auth/register',
+        'Try: POST /api/auth/login'
       ]
     });
   });
 
+app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
 
 app.use((req: Request, res: Response) => {
