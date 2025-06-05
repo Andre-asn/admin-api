@@ -21,8 +21,16 @@ export const register = async (req: Request, res: Response): Promise<void> => {
         }
         // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
-        // Always set role to 'patient' for registration
-        const role = 'patient';
+        // Fetch role_id for 'patient'
+        const { data: roleData } = await supabase
+            .from('roles')
+            .select('id')
+            .eq('name', 'patient')
+            .single();
+        if (!roleData) {
+            res.status(500).json({ success: false, message: 'Role not found' });
+            return;
+        }
         // Create user
         const { data: user, error } = await supabase
             .from('users')
@@ -33,7 +41,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
                 last_name: lastName,
                 gender,
                 dob,
-                role
+                role_id: roleData.id
             }])
             .select()
             .single();
@@ -42,7 +50,7 @@ export const register = async (req: Request, res: Response): Promise<void> => {
             return;
         }
         // Generate JWT
-        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign({ id: user.id, role_id: user.role_id }, JWT_SECRET, { expiresIn: '24h' });
         res.status(201).json({ success: true, user: { ...user, password: undefined }, token });
     } catch (err: any) {
         res.status(500).json({ success: false, message: 'Registration failed', error: (err as any).message });
@@ -69,7 +77,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
             return;
         }
         // Generate JWT
-        const token = jwt.sign({ id: user.id, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign({ id: user.id, role_id: user.role_id }, JWT_SECRET, { expiresIn: '24h' });
         res.json({ success: true, user: { ...user, password: undefined }, token });
     } catch (err: any) {
         res.status(500).json({ success: false, message: 'Login failed', error: (err as any).message });

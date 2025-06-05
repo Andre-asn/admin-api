@@ -1,6 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import doctorRoutes from './routes/doctorRoutes';
 import authRoutes from './routes/authRoutes';
+import rolePermissionRoutes from './routes/rolePermissionRoutes';
 
 const app: Express = express();
 
@@ -35,6 +36,7 @@ app.get('/', (req: Request, res: Response) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
+app.use('/api', rolePermissionRoutes);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({

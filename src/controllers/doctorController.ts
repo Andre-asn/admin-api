@@ -181,6 +181,17 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
             return;
         }
 
+        // Before updating or inserting a user as a doctor, fetch the doctor role_id:
+        const { data: doctorRole } = await supabase
+            .from('roles')
+            .select('id')
+            .eq('name', 'doctor')
+            .single();
+        if (!doctorRole) {
+            res.status(500).json({ success: false, message: 'Doctor role not found' });
+            return;
+        }
+
         // First, create the doctor record
         const { data: doctor, error: doctorError } = await supabase
             .from('doctors')
@@ -209,7 +220,7 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
         // Update the user's role to 'doctor'
         await supabase
             .from('users')
-            .update({ role: 'doctor' })
+            .update({ role_id: doctorRole.id })
             .eq('id', userId);
 
         // If address is provided, create the address record
@@ -321,7 +332,18 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
         doctorProfile
     } = req.body;
 
-    // 1. Create user
+    // Before inserting a user as a doctor, fetch the doctor role_id:
+    const { data: doctorRole } = await supabase
+        .from('roles')
+        .select('id')
+        .eq('name', 'doctor')
+        .single();
+    if (!doctorRole) {
+        res.status(500).json({ success: false, message: 'Doctor role not found' });
+        return;
+    }
+
+    // Use doctorRole.id as role_id in the insert
     const { data: user, error: userError } = await supabase
         .from('users')
         .insert([{
@@ -331,7 +353,7 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
             last_name: lastName,
             gender,
             dob,
-            role: 'doctor'
+            role_id: doctorRole.id
         }])
         .select()
         .single();
