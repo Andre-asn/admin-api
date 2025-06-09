@@ -8,7 +8,7 @@ import {
   removeRolePermission
 } from '../controllers/rolePermissionController';
 import { auth } from '../middleware/auth';
-import { isAdmin } from '../middleware/isAdmin';
+import { checkPermission } from '../middleware/checkPermission';
 
 const router = Router();
 
@@ -16,12 +16,12 @@ const router = Router();
 const asyncHandler = (fn: any) => (req: Request, res: Response, next: NextFunction) => {
   Promise.resolve(fn(req, res, next)).catch(next);
 };
-
-router.get('/roles', auth, isAdmin, asyncHandler(getRoles));
-router.get('/permissions', auth, isAdmin, asyncHandler(getPermissions));
-router.get('/modules', auth, isAdmin, asyncHandler(getModules));
-router.get('/role-permissions/:roleId', auth, isAdmin, asyncHandler(getRolePermissions));
-router.post('/role-permissions', auth, isAdmin, asyncHandler(assignRolePermission));
-router.delete('/role-permissions', auth, isAdmin, asyncHandler(removeRolePermission));
-
+/* 
+router.get('/roles', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getRoles));
+router.get('/permissions', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getPermissions));
+router.get('/modules', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getModules));
+router.get('/role-permissions/:roleId', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getRolePermissions));
+router.post('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'create' }), asyncHandler(assignRolePermission));
+router.delete('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'delete' }), asyncHandler(removeRolePermission));
+*/
 export default router; 

@@ -74,6 +74,7 @@ export const getDoctors = async (_req: Request, res: Response): Promise<void> =>
             success: false,
             message: 'Please try again later'
         });
+        return;
     }
 };
 
@@ -424,5 +425,22 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
     }
 
     res.status(201).json({ success: true, user, doctor, address: createdAddress, approval });
+};
+
+export const deleteDoctor = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+        const { error } = await supabase
+            .from('doctors')
+            .delete()
+            .eq('doctor_id', id);
+        if (error) {
+            res.status(500).json({ success: false, message: 'Error deleting doctor', error: error.message });
+            return;
+        }
+        res.json({ success: true, message: `Doctor ${id} deleted.` });
+    } catch (err: any) {
+        res.status(500).json({ success: false, message: 'Error deleting doctor', error: err.message });
+    }
 };
 
