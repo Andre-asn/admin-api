@@ -13,7 +13,9 @@ export const getDoctors = async (_req: Request, res: Response): Promise<void> =>
                 users:user_id (
                     first_name,
                     last_name,
-                    email
+                    email,
+                    gender,
+                    dob
                 ),
                 doctor_addresses (
                     address,
@@ -21,12 +23,6 @@ export const getDoctors = async (_req: Request, res: Response): Promise<void> =>
                     state,
                     country,
                     postal_code
-                ),
-                approvals (
-                    status,
-                    reviewed_by,
-                    reviewed_at,
-                    comments
                 )
             `);
 
@@ -41,7 +37,7 @@ export const getDoctors = async (_req: Request, res: Response): Promise<void> =>
 
         // Transform the data to match our API response format
         const formattedDoctors = doctors.map(doctor => ({
-            id: doctor.doctor_id,
+            doctorId: doctor.doctor_id,
             userId: doctor.user_id,
             specialization: doctor.specialization,
             licenseNumber: doctor.license_number,
@@ -52,12 +48,16 @@ export const getDoctors = async (_req: Request, res: Response): Promise<void> =>
             status: doctor.status,
             createdAt: doctor.created_at,
             updatedAt: doctor.updated_at,
-            // Joined data
             firstName: doctor.users?.first_name,
             lastName: doctor.users?.last_name,
             email: doctor.users?.email,
-            address: doctor.doctor_addresses?.[0],
-            approval: doctor.approvals?.[0]
+            gender: doctor.users?.gender,
+            dob: doctor.users?.dob,
+            address: doctor.doctor_addresses?.address,
+            city: doctor.doctor_addresses?.city,
+            state: doctor.doctor_addresses?.state,
+            country: doctor.doctor_addresses?.country,
+            postalCode: doctor.doctor_addresses?.postal_code,
         }));
 
         res.json({
@@ -90,7 +90,9 @@ export const getDoctorById = async (req: Request, res: Response): Promise<void> 
                 users:user_id (
                     first_name,
                     last_name,
-                    email
+                    email,
+                    gender,
+                    dob
                 ),
                 doctor_addresses (
                     address,
@@ -98,12 +100,6 @@ export const getDoctorById = async (req: Request, res: Response): Promise<void> 
                     state,
                     country,
                     postal_code
-                ),
-                approvals (
-                    status,
-                    reviewed_by,
-                    reviewed_at,
-                    comments
                 )
             `)
             .eq('doctor_id', id)
@@ -113,23 +109,14 @@ export const getDoctorById = async (req: Request, res: Response): Promise<void> 
             console.error('Database error:', error);
             res.status(500).json({
                 success: false,
-                message: 'Error fetching doctor from database'
-            });
-            return;
-        }
-
-        if (!doctor) {
-            console.log(`No doctor found with ID: ${id}`);
-            res.status(404).json({
-                success: false,
-                message: `No doctor found with ID: ${id}`
+                message: 'Error fetching doctor from database, does that doctor exist?'
             });
             return;
         }
 
         // Transform the data to match our API response format
         const formattedDoctor = {
-            id: doctor.doctor_id,
+            doctorId: doctor.doctor_id,
             userId: doctor.user_id,
             specialization: doctor.specialization,
             licenseNumber: doctor.license_number,
@@ -140,12 +127,16 @@ export const getDoctorById = async (req: Request, res: Response): Promise<void> 
             status: doctor.status,
             createdAt: doctor.created_at,
             updatedAt: doctor.updated_at,
-            // Joined data
             firstName: doctor.users?.first_name,
             lastName: doctor.users?.last_name,
             email: doctor.users?.email,
-            address: doctor.doctor_addresses?.[0],
-            approval: doctor.approvals?.[0]
+            gender: doctor.users?.gender,
+            dob: doctor.users?.dob,
+            address: doctor.doctor_addresses?.address,
+            city: doctor.doctor_addresses?.city,
+            state: doctor.doctor_addresses?.state,
+            country: doctor.doctor_addresses?.country,
+            postalCode: doctor.doctor_addresses?.postal_code,
         };
 
         console.log(`Found doctor: ${formattedDoctor.firstName} ${formattedDoctor.lastName}`);
@@ -204,7 +195,6 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
                 institution,
                 degree,
                 years_of_edu: yearsOfEducation,
-                status: 'pending'  // New doctors start as pending
             }])
             .select()
             .single();
@@ -247,7 +237,6 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
             .from('approvals')
             .insert([{
                 doctor_id: doctor.doctor_id,
-                status: 'pending'
             }]);
 
         // Fetch the complete doctor record with all relations
@@ -258,7 +247,9 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
                 users:user_id (
                     first_name,
                     last_name,
-                    email
+                    email,
+                    gender,
+                    dob
                 ),
                 doctor_addresses (
                     address,
@@ -266,12 +257,6 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
                     state,
                     country,
                     postal_code
-                ),
-                approvals (
-                    status,
-                    reviewed_by,
-                    reviewed_at,
-                    comments
                 )
             `)
             .eq('doctor_id', doctor.doctor_id)
@@ -288,23 +273,27 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
 
         // Transform the data to match our API response format
         const formattedDoctor = {
-            id: completeDoctor.doctor_id,
-            userId: completeDoctor.user_id,
-            specialization: completeDoctor.specialization,
-            licenseNumber: completeDoctor.license_number,
-            yearsOfExperience: completeDoctor.years_of_experience,
-            institution: completeDoctor.institution,
-            degree: completeDoctor.degree,
-            yearsOfEducation: completeDoctor.years_of_edu,
-            status: completeDoctor.status,
-            createdAt: completeDoctor.created_at,
-            updatedAt: completeDoctor.updated_at,
-            // Joined data
-            firstName: completeDoctor.users?.first_name,
-            lastName: completeDoctor.users?.last_name,
-            email: completeDoctor.users?.email,
-            address: completeDoctor.doctor_addresses?.[0],
-            approval: completeDoctor.approvals?.[0]
+            doctorId: doctor.doctor_id,
+            userId: doctor.user_id,
+            specialization: doctor.specialization,
+            licenseNumber: doctor.license_number,
+            yearsOfExperience: doctor.years_of_experience,
+            institution: doctor.institution,
+            degree: doctor.degree,
+            yearsOfEducation: doctor.years_of_education,
+            status: doctor.status,
+            createdAt: doctor.created_at,
+            updatedAt: doctor.updated_at,
+            firstName: doctor.users?.first_name,
+            lastName: doctor.users?.last_name,
+            email: doctor.users?.email,
+            gender: doctor.users?.gender,
+            dob: doctor.users?.dob,
+            address: doctor.doctor_addresses?.address,
+            city: doctor.doctor_addresses?.city,
+            state: doctor.doctor_addresses?.state,
+            country: doctor.doctor_addresses?.country,
+            postalCode: doctor.doctor_addresses?.postal_code,
         };
 
         res.status(201).json({
@@ -371,8 +360,7 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
         .from('doctors')
         .insert([{
             ...doctorFields,
-            user_id: user.id,
-            status: 'pending'
+            user_id: user.id
         }])
         .select()
         .single();
@@ -413,8 +401,7 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
     const { data: approvalData, error: approvalError } = await supabase
         .from('approvals')
         .insert([{
-            doctor_id: doctor.doctor_id,
-            status: 'pending'
+            doctor_id: doctor.doctor_id
         }])
         .select()
         .single();
@@ -427,20 +414,24 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
     res.status(201).json({ success: true, user, doctor, address: createdAddress, approval });
 };
 
-export const deleteDoctor = async (req: Request, res: Response): Promise<void> => {
+export const deactivateDoctor = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
+
+        // Update the doctor's status to inactive
         const { error } = await supabase
             .from('doctors')
-            .delete()
+            .update({ status: 'inactive' })
             .eq('doctor_id', id);
+
         if (error) {
-            res.status(500).json({ success: false, message: 'Error deleting doctor', error: error.message });
+            res.status(500).json({ success: false, message: 'Error deactivating doctor', error: error.message });
             return;
         }
-        res.json({ success: true, message: `Doctor ${id} deleted.` });
+
+        res.json({ success: true, message: `Doctor ${id} has been deactivated.` });
     } catch (err: any) {
-        res.status(500).json({ success: false, message: 'Error deleting doctor', error: err.message });
+        res.status(500).json({ success: false, message: 'Error deactivating doctor', error: err.message });
     }
 };
 

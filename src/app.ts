@@ -49,8 +49,8 @@ app.use((req: Request, res: Response) => {
             'GET /',
             'GET /api/doctors', 
             'GET /api/doctors/:id'
-        ]
+      ]
     });
-});
+  });
 
 export default app;
