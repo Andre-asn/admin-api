@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { supabase } from '../utils/supabase';
 import { IGetUserAuthInfoRequest } from '../types/express/IGetUserAuthInfoRequest';
 

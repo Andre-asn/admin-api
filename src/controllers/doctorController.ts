@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
 import { IGetUserAuthInfoRequest } from '../types/express/IGetUserAuthInfoRequest';
+import bcrypt from 'bcryptjs';
 
 export const getDoctors = async (_req: Request, res: Response): Promise<void> => {
     try {
@@ -240,7 +241,7 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
             }]);
 
         // Fetch the complete doctor record with all relations
-        const { data: completeDoctor, error: fetchError } = await supabase
+        const { error: fetchError } = await supabase
             .from('doctors')
             .select(`
                 *,
@@ -314,7 +315,7 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
 export const onboardDoctor = async (req: Request, res: Response): Promise<void> => {
     const {
         email,
-        password, // Not hashed yet
+        password,
         firstName,
         lastName,
         gender,
@@ -333,12 +334,14 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
         return;
     }
 
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Use doctorRole.id as role_id in the insert
     const { data: user, error: userError } = await supabase
         .from('users')
         .insert([{
             email,
-            password, // Store as plain text for now (not secure)
+            password: hashedPassword,
             first_name: firstName,
             last_name: lastName,
             gender,
@@ -411,7 +414,7 @@ export const onboardDoctor = async (req: Request, res: Response): Promise<void> 
         approval = approvalData;
     }
 
-    res.status(201).json({ success: true, user, doctor, address: createdAddress, approval });
+    res.status(201).json({ success: true, user: {...user, password: undefined}, doctor, address: createdAddress, approval });
 };
 
 export const deactivateDoctor = async (req: Request, res: Response): Promise<void> => {
