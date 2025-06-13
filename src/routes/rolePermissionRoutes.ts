@@ -12,16 +12,11 @@ import { checkPermission } from '../middleware/checkPermission';
 
 const router = Router();
 
-// Helper to wrap async route handlers
-const asyncHandler = (fn: any) => (req: Request, res: Response, next: NextFunction) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
-/* 
-router.get('/roles', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getRoles));
-router.get('/permissions', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getPermissions));
-router.get('/modules', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getModules));
-router.get('/role-permissions/:roleId', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), asyncHandler(getRolePermissions));
-router.post('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'create' }), asyncHandler(assignRolePermission));
-router.delete('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'delete' }), asyncHandler(removeRolePermission));
-*/
+router.get('/roles', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getRoles);
+router.get('/permissions', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getPermissions);
+router.get('/modules', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getModules);
+router.get('/role-permissions/:roleId', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getRolePermissions);
+router.post('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'create' }), assignRolePermission);
+router.delete('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'delete' }), removeRolePermission);
+
 export default router; 
