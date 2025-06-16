@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
+import { IGetUserAuthInfoRequest } from '../types/express/IGetUserAuthInfoRequest';
 
 // List all roles
 export const getRoles = async (_req: Request, res: Response): Promise<void> => {
@@ -277,7 +278,7 @@ export const removeRolePermission = async (req: Request, res: Response): Promise
         }
 
         // Check if the permission is assigned
-        const { data: existingPermission, error: checkError } = await supabase
+        const { data: existingPermission } = await supabase
             .from('role_module_permissions')
             .select('id')
             .eq('role_id', roleId)
@@ -321,4 +322,4 @@ export const removeRolePermission = async (req: Request, res: Response): Promise
             error: err.message 
         });
     }
-}; 
+};

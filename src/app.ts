@@ -3,6 +3,7 @@ import doctorRoutes from './routes/doctorRoutes';
 import authRoutes from './routes/authRoutes';
 import rolePermissionRoutes from './routes/rolePermissionRoutes';
 import patientRoutes from './routes/patientRoutes';
+import sidebarRoutes from './routes/sidebarRoutes';
 
 const app: Express = express();
 
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api', rolePermissionRoutes);
 app.use('/api/patients', patientRoutes);
+app.use('/api/sidebar', sidebarRoutes);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({
