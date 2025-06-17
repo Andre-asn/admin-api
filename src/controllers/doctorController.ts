@@ -93,7 +93,8 @@ export const getDoctorById = async (req: Request, res: Response): Promise<void> 
                     last_name,
                     email,
                     gender,
-                    dob
+                    dob,
+                    status
                 ),
                 doctor_addresses (
                     address,
@@ -125,7 +126,7 @@ export const getDoctorById = async (req: Request, res: Response): Promise<void> 
             institution: doctor.institution,
             degree: doctor.degree,
             yearsOfEducation: doctor.years_of_education,
-            status: doctor.status,
+            status: doctor.users?.status,
             createdAt: doctor.created_at,
             updatedAt: doctor.updated_at,
             firstName: doctor.users?.first_name,
@@ -250,7 +251,8 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
                     last_name,
                     email,
                     gender,
-                    dob
+                    dob,
+                    status
                 ),
                 doctor_addresses (
                     address,
@@ -282,7 +284,7 @@ export const createDoctor = async (req: IGetUserAuthInfoRequest, res: Response):
             institution: doctor.institution,
             degree: doctor.degree,
             yearsOfEducation: doctor.years_of_education,
-            status: doctor.status,
+            status: doctor.users?.status,
             createdAt: doctor.created_at,
             updatedAt: doctor.updated_at,
             firstName: doctor.users?.first_name,
@@ -421,20 +423,45 @@ export const deactivateDoctor = async (req: Request, res: Response): Promise<voi
     try {
         const { id } = req.params;
 
-        // Update the doctor's status to inactive
-        const { error } = await supabase
+        const { data: doctor, error: doctorError } = await supabase
             .from('doctors')
-            .update({ status: 'inactive' })
-            .eq('doctor_id', id);
+            .select('user_id')
+            .eq('doctor_id', id)
+            .single();
 
-        if (error) {
-            res.status(500).json({ success: false, message: 'Error deactivating doctor', error: error.message });
+        if (doctorError || !doctor) {
+            res.status(404).json({ 
+                success: false, 
+                message: 'Doctor not found', 
+                error: doctorError?.message 
+            });
             return;
         }
 
-        res.json({ success: true, message: `Doctor ${id} has been deactivated.` });
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ status: 'inactive' })
+            .eq('id', doctor.user_id);
+
+        if (updateError) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error deactivating doctor', 
+                error: updateError.message 
+            });
+            return;
+        }
+
+        res.json({ 
+            success: true, 
+            message: `Doctor ${id} has been deactivated.` 
+        });
     } catch (err: any) {
-        res.status(500).json({ success: false, message: 'Error deactivating doctor', error: err.message });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error deactivating doctor', 
+            error: err.message 
+        });
     }
 };
 

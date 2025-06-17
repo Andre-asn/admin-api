@@ -115,25 +115,25 @@ export const deletePatient = async (req: Request, res: Response): Promise<void> 
         if (patient.role_id !== 1) {
             res.status(403).json({ 
                 success: false, 
-                message: 'Cannot delete this account as it is not a patient account' 
+                message: 'Cannot deactivate this account as it is not a patient account' 
             });
             return;
         }
 
-        // If we get here, we know it's a patient account, proceed with deletion
+        // If we get here, we know it's a patient account, proceed with deactivation
         const { error } = await supabase
             .from('users')
-            .delete()
+            .update({ status: 'inactive' })
             .eq('id', id)
             .eq('role_id', 1);
 
         if (error) {
-            res.status(500).json({ success: false, message: 'Error deleting patient', error: error.message });
+            res.status(500).json({ success: false, message: 'Error deactivating patient', error: error.message });
             return;
         }
 
-        res.json({ success: true, message: `Patient ${id} deleted successfully.` });
+        res.json({ success: true, message: `Patient ${id} has been deactivated.` });
     } catch (err: any) {
-        res.status(500).json({ success: false, message: 'Error deleting patient', error: err.message });
+        res.status(500).json({ success: false, message: 'Error deactivating patient', error: err.message });
     }
 }; 

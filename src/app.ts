@@ -22,7 +22,6 @@ app.get('/', (req: Request, res: Response) => {
         createDoctors: 'POST /api/doctors - Create a new doctor',
         oneDoctor: 'GET /api/doctors/:id - Get specific doctor by ID',
         auth: {
-          register: 'POST /api/auth/register',
           login: 'POST /api/auth/login',
           me: 'GET /api/auth/me'
         }
@@ -30,7 +29,6 @@ app.get('/', (req: Request, res: Response) => {
       examples: [
         'Try: GET /api/doctors',
         'Try: GET /api/doctors/1',
-        'Try: POST /api/auth/register',
         'Try: POST /api/auth/login'
       ]
     });

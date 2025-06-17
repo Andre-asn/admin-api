@@ -9,6 +9,6 @@ router.get('/', auth, checkPermission({ module: 'patients_list', permission: 're
 router.get('/:id', auth, checkPermission({ module: 'patients_list', permission: 'read' }), getPatientById);
 router.post('/', auth, checkPermission({ module: 'patients_list', permission: 'create' }), createPatient);
 router.put('/:id', auth, checkPermission({ module: 'patients_list', permission: 'update' }), updatePatient);
-router.delete('/:id', auth, checkPermission({ module: 'patients_list', permission: 'delete' }), deletePatient);
+router.put('/:id/deactivate', auth, checkPermission({ module: 'patients_list', permission: 'delete' }), deletePatient);
 
 export default router; 
