@@ -153,173 +153,74 @@ export const getRolePermissions = async (req: Request, res: Response): Promise<v
     }
 };
 
-// Assign permission to a role for a module
-export const assignRolePermission = async (req: Request, res: Response): Promise<void> => {
+export const createRole = async (req: Request, res: Response): Promise<void> => {
+    const { name, modulePermissions } = req.body;
+    if (!name || !Array.isArray(modulePermissions)) {
+        res.status(400).json({ success: false, message: 'Missing role name or modulePermissions' });
+        return;
+    }
     try {
-        const { roleId, moduleId, permissionId } = req.body;
-
-        // Validate required fields
-        if (!roleId || !moduleId || !permissionId) {
-            res.status(400).json({ 
-                success: false, 
-                message: 'Missing required fields: roleId, moduleId, and permissionId are required' 
-            });
-            return;
-        }
-
-        // Check if the role exists
-        const { data: role, error: roleError } = await supabase
+        // Check for duplicate role name
+        const { data: existingRole } = await supabase
             .from('roles')
             .select('id')
-            .eq('id', roleId)
+            .eq('name', name)
             .single();
-
-        if (roleError || !role) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Role not found' 
-            });
+        if (existingRole) {
+            res.status(409).json({ success: false, message: 'Role already exists' });
             return;
         }
-
-        // Check if the module exists
-        const { data: module, error: moduleError } = await supabase
-            .from('modules')
-            .select('id')
-            .eq('id', moduleId)
-            .single();
-
-        if (moduleError || !module) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Module not found' 
-            });
-            return;
-        }
-
-        // Check if the permission exists
-        const { data: permission, error: permissionError } = await supabase
-            .from('permissions')
-            .select('id')
-            .eq('id', permissionId)
-            .single();
-
-        if (permissionError || !permission) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Permission not found' 
-            });
-            return;
-        }
-
-        // Check if the permission is already assigned
-        const { data: existingPermission, error: checkError } = await supabase
-            .from('role_module_permissions')
-            .select('id')
-            .eq('role_id', roleId)
-            .eq('module_id', moduleId)
-            .eq('permission_id', permissionId)
-            .single();
-
-        if (existingPermission) {
-            res.status(400).json({ 
-                success: false, 
-                message: 'Permission is already assigned to this role for this module' 
-            });
-            return;
-        }
-
-        // Assign the permission
-        const { data, error } = await supabase
-            .from('role_module_permissions')
-            .insert([{ 
-                role_id: roleId, 
-                module_id: moduleId, 
-                permission_id: permissionId 
-            }])
+        // Create the new role
+        const { data: role, error: roleError } = await supabase
+            .from('roles')
+            .insert([{ name }])
             .select()
             .single();
-
-        if (error) {
-            res.status(500).json({ 
-                success: false, 
-                message: 'Error assigning permission', 
-                error: error.message 
-            });
+        if (roleError || !role) {
+            res.status(500).json({ success: false, message: 'Error creating role', error: roleError?.message });
             return;
         }
-
-        res.status(201).json({ 
-            success: true, 
-            message: 'Permission assigned successfully', 
-            data 
+        // Prepare role_module_permissions inserts
+        const permissionRows = [];
+        for (const mp of modulePermissions) {
+            const { module_id, permission_id } = mp;
+            if (!Number.isInteger(module_id) || !Array.isArray(permission_id)) {
+                res.status(400).json({ success: false, message: 'Invalid moduleId or permissionIds in modulePermissions' });
+                return;
+            }
+            for (const permissionId of permission_id) {
+                if (!Number.isInteger(permissionId)) {
+                    res.status(400).json({ success: false, message: 'Invalid permissionId in permissionIds array' });
+                    return;
+                }
+                permissionRows.push({
+                    role_id: role.id,
+                    module_id: module_id,
+                    permission_id: permissionId
+                });
+            }
+        }
+        console.log('permissionRows:', permissionRows);
+        if (permissionRows.length === 0) {
+            res.status(400).json({ success: false, message: 'No permissions to assign. Check your modulePermissions input.' });
+            return;
+        }
+        const { error: permError } = await supabase
+            .from('role_module_permissions')
+            .insert(permissionRows);
+        if (permError) {
+            res.status(500).json({ success: false, message: 'Error assigning permissions', error: permError.message });
+            return;
+        }
+        res.status(201).json({
+            success: true,
+            role: {
+                id: role.id,
+                name: role.name,
+                modulePermissions
+            }
         });
     } catch (err: any) {
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error assigning permission', 
-            error: err.message 
-        });
-    }
-};
-
-// Remove permission from a role for a module
-export const removeRolePermission = async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { roleId, moduleId, permissionId } = req.body;
-
-        // Validate required fields
-        if (!roleId || !moduleId || !permissionId) {
-            res.status(400).json({ 
-                success: false, 
-                message: 'Missing required fields: roleId, moduleId, and permissionId are required' 
-            });
-            return;
-        }
-
-        // Check if the permission is assigned
-        const { data: existingPermission } = await supabase
-            .from('role_module_permissions')
-            .select('id')
-            .eq('role_id', roleId)
-            .eq('module_id', moduleId)
-            .eq('permission_id', permissionId)
-            .single();
-
-        if (!existingPermission) {
-            res.status(404).json({ 
-                success: false, 
-                message: 'Permission is not assigned to this role for this module' 
-            });
-            return;
-        }
-
-        // Remove the permission
-        const { error } = await supabase
-            .from('role_module_permissions')
-            .delete()
-            .eq('role_id', roleId)
-            .eq('module_id', moduleId)
-            .eq('permission_id', permissionId);
-
-        if (error) {
-            res.status(500).json({ 
-                success: false, 
-                message: 'Error removing permission', 
-                error: error.message 
-            });
-            return;
-        }
-
-        res.json({ 
-            success: true, 
-            message: 'Permission removed successfully' 
-        });
-    } catch (err: any) {
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error removing permission', 
-            error: err.message 
-        });
+        res.status(500).json({ success: false, message: 'Error creating role', error: err.message });
     }
 };

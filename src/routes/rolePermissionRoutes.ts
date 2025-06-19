@@ -4,8 +4,7 @@ import {
   getPermissions,
   getModules,
   getRolePermissions,
-  assignRolePermission,
-  removeRolePermission
+  createRole,
 } from '../controllers/rolePermissionController';
 import { auth } from '../middleware/auth';
 import { checkPermission } from '../middleware/checkPermission';
@@ -16,7 +15,6 @@ router.get('/roles', auth, checkPermission({ module: 'role_permissions', permiss
 router.get('/permissions', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getPermissions);
 router.get('/modules', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getModules);
 router.get('/role-permissions/:roleId', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getRolePermissions);
-router.post('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'create' }), assignRolePermission);
-router.delete('/role-permissions', auth, checkPermission({ module: 'role_permissions', permission: 'delete' }), removeRolePermission);
+router.post('/roles', auth, checkPermission({ module: 'role_permissions', permission: 'create' }), createRole);
 
 export default router; 
