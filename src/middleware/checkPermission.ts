@@ -26,6 +26,21 @@ export const checkPermission = (options: CheckPermissionOptions) => {
       const { role_id } = req.user;
       const { module, permission } = options;
 
+      // Fetch the role name for code-based superadmin enforcement
+      const { data: role, error: roleError } = await supabase
+        .from('roles')
+        .select('name')
+        .eq('id', role_id)
+        .single();
+      if (roleError || !role) {
+        res.status(500).json({ success: false, message: 'Role not found' });
+        return;
+      }
+      if (role.name === 'superadmin') {
+        // Always allow superadmin
+        return next();
+      }
+
       // Get the module and permission from the database
       const [moduleResult, permissionResult] = await Promise.all([
         supabase.from('modules').select('id').eq('name', module).single(),
