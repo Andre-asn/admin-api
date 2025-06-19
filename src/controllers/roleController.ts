@@ -1,6 +1,5 @@
 import { Request, Response } from 'express';
 import { supabase } from '../utils/supabase';
-import { IGetUserAuthInfoRequest } from '../types/express/IGetUserAuthInfoRequest';
 
 // List all roles
 export const getRoles = async (_req: Request, res: Response): Promise<void> => {
@@ -32,66 +31,6 @@ export const getRoles = async (_req: Request, res: Response): Promise<void> => {
     }
 };
 
-// List all permissions
-export const getPermissions = async (_req: Request, res: Response): Promise<void> => {
-    try {
-        const { data: permissions, error } = await supabase
-            .from('permissions')
-            .select('*')
-            .order('id');
-
-        if (error) {
-            res.status(500).json({ 
-                success: false, 
-                message: 'Error fetching permissions', 
-                error: error.message 
-            });
-            return;
-        }
-
-        res.json({ 
-            success: true, 
-            data: permissions 
-        });
-    } catch (err: any) {
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error fetching permissions', 
-            error: err.message 
-        });
-    }
-};
-
-// List all modules
-export const getModules = async (_req: Request, res: Response): Promise<void> => {
-    try {
-        const { data: modules, error } = await supabase
-            .from('modules')
-            .select('*')
-            .order('id');
-
-        if (error) {
-            res.status(500).json({ 
-                success: false, 
-                message: 'Error fetching modules', 
-                error: error.message 
-            });
-            return;
-        }
-
-        res.json({ 
-            success: true, 
-            data: modules 
-        });
-    } catch (err: any) {
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error fetching modules', 
-            error: err.message 
-        });
-    }
-};
-
 // List all permissions for a role
 export const getRolePermissions = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -116,17 +55,13 @@ export const getRolePermissions = async (req: Request, res: Response): Promise<v
         const { data: permissions, error } = await supabase
             .from('role_module_permissions')
             .select(`
-                module_id,
-                permission_id,
                 modules (
                     id,
-                    name,
-                    description
+                    name
                 ),
                 permissions (
                     id,
-                    name,
-                    description
+                    name
                 )
             `)
             .eq('role_id', roleId);
@@ -140,9 +75,32 @@ export const getRolePermissions = async (req: Request, res: Response): Promise<v
             return;
         }
 
+        // Group permissions by module
+        const modulePermissionsMap = new Map();
+        
+        permissions?.forEach((perm: any) => {
+            const moduleId = perm.modules.id;
+            const moduleName = perm.modules.name;
+            
+            if (!modulePermissionsMap.has(moduleId)) {
+                modulePermissionsMap.set(moduleId, {
+                    module_id: moduleId,
+                    module_name: moduleName,
+                    permissions: []
+                });
+            }
+            
+            modulePermissionsMap.get(moduleId).permissions.push({
+                id: perm.permissions.id,
+                name: perm.permissions.name
+            });
+        });
+
+        const groupedPermissions = Array.from(modulePermissionsMap.values());
+
         res.json({ 
             success: true, 
-            data: permissions 
+            data: groupedPermissions 
         });
     } catch (err: any) {
         res.status(500).json({ 
@@ -224,3 +182,75 @@ export const createRole = async (req: Request, res: Response): Promise<void> => 
         res.status(500).json({ success: false, message: 'Error creating role', error: err.message });
     }
 };
+
+export const updateRole = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { roleId } = req.params;
+        const { name, modulePermissions } = req.body;
+
+        // First verify if the role exists
+        const { data: role, error: roleError } = await supabase
+            .from('roles')
+            .select('id')
+            .eq('id', roleId)
+            .single();
+        if (roleError || !role) {
+            res.status(404).json({ success: false, message: 'Role not found' });
+            return;
+        }
+
+        // Check if new name is currently in use
+        if (name) {
+            const { data: existingRole } = await supabase
+                .from('roles')
+                .select('id')
+                .eq('name', name)
+                .neq('id', roleId)
+                .single();
+            if (existingRole) {
+                res.status(409).json({ success: false, message: 'Role name already in use' });
+                return;
+            }
+        }
+
+         // Start a transaction to update role and permissions
+         const { error: transactionError } = await supabase.rpc('update_role_transaction', {
+            p_role_id: roleId,
+            p_name: name || undefined,
+            p_module_permissions: modulePermissions.flatMap((mp: any) => 
+                mp.permission_id.map((pid: any) => ({
+                    role_id: roleId,
+                    module_id: mp.module_id,
+                    permission_id: pid
+                }))
+            )
+        });
+
+        if (transactionError) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error updating role, check your permission or module IDs', 
+            });
+            return;
+        }
+
+        res.json({
+            success: true,
+            message: 'Role updated successfully', 
+        });
+
+    } catch (err: any) {
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error updating role', 
+            error: err.message 
+        });
+    }
+};
+
+export const deleteRole = async (req: Request, res: Response): Promise<void> => {
+}
+
+
+
+    

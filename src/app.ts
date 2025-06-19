@@ -1,7 +1,7 @@
 import express, { Express, Request, Response } from 'express';
 import doctorRoutes from './routes/doctorRoutes';
 import authRoutes from './routes/authRoutes';
-import rolePermissionRoutes from './routes/rolePermissionRoutes';
+import roleRoutes from './routes/roleRoutes';
 import patientRoutes from './routes/patientRoutes';
 import sidebarRoutes from './routes/sidebarRoutes';
 import userRoutes from './routes/userRoutes';
@@ -40,7 +40,7 @@ app.use('/api/doctors', doctorRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sidebar', sidebarRoutes);
-app.use('/api', rolePermissionRoutes);
+app.use('/api/roles', roleRoutes);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({
