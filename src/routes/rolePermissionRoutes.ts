@@ -11,10 +11,10 @@ import { checkPermission } from '../middleware/checkPermission';
 
 const router = Router();
 
-router.get('/roles', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getRoles);
-router.get('/permissions', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getPermissions);
-router.get('/modules', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getModules);
-router.get('/role-permissions/:roleId', auth, checkPermission({ module: 'role_permissions', permission: 'read' }), getRolePermissions);
-router.post('/roles', auth, checkPermission({ module: 'role_permissions', permission: 'create' }), createRole);
+router.get('/roles', auth, checkPermission({ module: 'roles_list', permission: 'read' }), getRoles);
+router.get('/permissions', auth, checkPermission({ module: 'roles_list', permission: 'read' }), getPermissions);
+router.get('/modules', auth, checkPermission({ module: 'roles_list', permission: 'read' }), getModules); // TODO: Move this to its own controller and route, with its own module
+router.get('/role-permissions/:roleId', auth, checkPermission({ module: 'roles_list', permission: 'read' }), getRolePermissions);
+router.post('/roles', auth, checkPermission({ module: 'roles_list', permission: 'create' }), createRole);
 
 export default router; 

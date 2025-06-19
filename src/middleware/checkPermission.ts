@@ -4,7 +4,7 @@ import { IGetUserAuthInfoRequest } from '../types/express/IGetUserAuthInfoReques
 
 // Define permission types for type safety
 export type PermissionType = 'create' | 'read' | 'update' | 'delete';
-export type ModuleType = 'doctors_list' | 'patients_list' | 'role_permissions';
+export type ModuleType = 'doctors_list' | 'patients_list' | 'users_list' | 'roles_list';
 
 interface CheckPermissionOptions {
   module: ModuleType;
