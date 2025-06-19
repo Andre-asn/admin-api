@@ -128,54 +128,133 @@ export const createRole = async (req: Request, res: Response): Promise<void> => 
             res.status(409).json({ success: false, message: 'Role already exists' });
             return;
         }
-        // Create the new role
-        const { data: role, error: roleError } = await supabase
-            .from('roles')
-            .insert([{ name }])
-            .select()
-            .single();
-        if (roleError || !role) {
-            res.status(500).json({ success: false, message: 'Error creating role', error: roleError?.message });
-            return;
-        }
-        // Prepare role_module_permissions inserts
+
+        // Pre-validate all module and permission IDs before creating anything
+        const validationPromises = [];
         const permissionRows = [];
+
         for (const mp of modulePermissions) {
             const { module_id, permission_id } = mp;
             if (!Number.isInteger(module_id) || !Array.isArray(permission_id)) {
                 res.status(400).json({ success: false, message: 'Invalid moduleId or permissionIds in modulePermissions' });
                 return;
             }
+
+            // Validate module exists
+            validationPromises.push(
+                supabase.from('modules').select('id').eq('id', module_id).single()
+            );
+
             for (const permissionId of permission_id) {
                 if (!Number.isInteger(permissionId)) {
                     res.status(400).json({ success: false, message: 'Invalid permissionId in permissionIds array' });
                     return;
                 }
+
+                // Validate permission exists
+                validationPromises.push(
+                    supabase.from('permissions').select('id').eq('id', permissionId).single()
+                );
+
                 permissionRows.push({
-                    role_id: role.id,
                     module_id: module_id,
                     permission_id: permissionId
                 });
             }
         }
-        console.log('permissionRows:', permissionRows);
+
+        // Wait for all validation queries
+        const validationResults = await Promise.all(validationPromises);
+        
+        // Check if any validation failed
+        for (const result of validationResults) {
+            if (result.error) {
+                res.status(400).json({ 
+                    success: false, 
+                    message: 'Invalid module_id or permission_id provided' 
+                });
+                return;
+            }
+        }
+
         if (permissionRows.length === 0) {
             res.status(400).json({ success: false, message: 'No permissions to assign. Check your modulePermissions input.' });
             return;
         }
-        const { error: permError } = await supabase
-            .from('role_module_permissions')
-            .insert(permissionRows);
-        if (permError) {
-            res.status(500).json({ success: false, message: 'Error assigning permissions', error: permError.message });
+
+        // Use a transaction to create role and permissions atomically
+        const { error: transactionError } = await supabase.rpc('create_role_transaction', {
+            p_name: name,
+            p_permissions: permissionRows
+        });
+
+        if (transactionError) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error creating role', 
+                error: transactionError.message 
+            });
             return;
         }
+
+        // Fetch the created role with its permissions
+        const { data: createdRole, error: fetchError } = await supabase
+            .from('roles')
+            .select(`
+                id,
+                name,
+                role_module_permissions (
+                    modules (
+                        id,
+                        name
+                    ),
+                    permissions (
+                        id,
+                        name
+                    )
+                )
+            `)
+            .eq('name', name)
+            .single();
+
+        if (fetchError) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Role created but error fetching created data', 
+                error: fetchError.message 
+            });
+            return;
+        }
+
+        // Group permissions by module to avoid redundancy
+        const modulePermissionsMap = new Map();
+        
+        createdRole.role_module_permissions?.forEach((perm: any) => {
+            const moduleId = perm.modules.id;
+            const moduleName = perm.modules.name;
+            
+            if (!modulePermissionsMap.has(moduleId)) {
+                modulePermissionsMap.set(moduleId, {
+                    module_id: moduleId,
+                    module_name: moduleName,
+                    permissions: []
+                });
+            }
+            
+            modulePermissionsMap.get(moduleId).permissions.push({
+                id: perm.permissions.id,
+                name: perm.permissions.name
+            });
+        });
+
+        const groupedPermissions = Array.from(modulePermissionsMap.values());
+
         res.status(201).json({
             success: true,
-            role: {
-                id: role.id,
-                name: role.name,
-                modulePermissions
+            data: {
+                id: createdRole.id,
+                name: createdRole.name,
+                modulePermissions: groupedPermissions
             }
         });
     } catch (err: any) {
@@ -249,6 +328,89 @@ export const updateRole = async (req: Request, res: Response): Promise<void> => 
 };
 
 export const deleteRole = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { roleId } = req.params;
+
+        // First verify if the role exists
+        const { data: role, error: roleError } = await supabase
+            .from('roles')
+            .select('name')
+            .eq('id', roleId)
+            .single();
+
+        if (roleError || !role) {
+            res.status(404).json({ 
+                success: false, 
+                message: 'Role not found' 
+            });
+            return;
+        }
+
+        // Check if any users are currently assigned this role
+        const { data: users, error: userError } = await supabase
+            .from('users')
+            .select('id')
+            .eq('role_id', roleId);
+
+        if (userError) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error checking role usage', 
+                error: userError.message 
+            });
+            return;
+        }
+
+        if (users && users.length > 0) {
+            res.status(409).json({ 
+                success: false, 
+                message: `Cannot delete role. It is currently assigned to ${users.length} user(s). Please reassign these users to different roles first.` 
+            });
+            return;
+        }
+
+        // If no users have this role, proceed with deletion
+        // First delete all role permissions (due to foreign key constraints)
+        const { error: permDeleteError } = await supabase
+            .from('role_module_permissions')
+            .delete()
+            .eq('role_id', roleId);
+
+        if (permDeleteError) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error deleting role permissions', 
+                error: permDeleteError.message 
+            });
+            return;
+        }
+
+        // Then delete the role itself
+        const { error: roleDeleteError } = await supabase
+            .from('roles')
+            .delete()
+            .eq('id', roleId);
+
+        if (roleDeleteError) {
+            res.status(500).json({ 
+                success: false, 
+                message: 'Error deleting role', 
+                error: roleDeleteError.message 
+            });
+            return;
+        }
+
+        res.json({ 
+            success: true, 
+            message: `Role "${role.name}" successfully deleted` 
+        });
+    } catch (err: any) {
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error deleting role', 
+            error: err.message 
+        });
+    }
 }
 
 

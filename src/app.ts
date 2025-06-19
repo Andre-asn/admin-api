@@ -5,6 +5,7 @@ import roleRoutes from './routes/roleRoutes';
 import patientRoutes from './routes/patientRoutes';
 import sidebarRoutes from './routes/sidebarRoutes';
 import userRoutes from './routes/userRoutes';
+import systemRoutes from './routes/systemRoutes';
 
 const app: Express = express();
 
@@ -41,6 +42,7 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sidebar', sidebarRoutes);
 app.use('/api/roles', roleRoutes);
+app.use('/api/system', systemRoutes);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({
