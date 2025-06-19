@@ -34,19 +34,18 @@ app.get('/', (req: Request, res: Response) => {
       ]
     });
   });
-  
-app.use('/api', rolePermissionRoutes);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sidebar', sidebarRoutes);
+app.use('/api', rolePermissionRoutes);
 
 app.use((req: Request, res: Response) => {
     res.status(404).json({
         success: false,
         message: `Oops! "${req.originalUrl}" is not a valid route`,
-        suggestion: 'Try /api/doctors instead!',
         availableRoutes: [
             'GET /',
             'GET /api/doctors', 
