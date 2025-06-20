@@ -130,6 +130,50 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
 }; 
 
+export const getUserById = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { id } = req.params;
+
+        const { data: user, error } = await supabase
+            .from('users')
+            .select(`
+                id,
+                first_name,
+                last_name,
+                email,
+                status,
+                created_at,
+                updated_at,
+                role_id,
+                roles (
+                    id,
+                    name
+                )
+            `)
+            .eq('id', id)
+            .single();
+
+        if (error || !user) {
+            res.status(404).json({ 
+                success: false, 
+                message: 'User not found' 
+            });
+            return;
+        }
+
+        res.json({ 
+            success: true, 
+            data: user 
+        });
+    } catch (err: any) {
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error fetching user', 
+            error: err.message 
+        });
+    }
+};
+
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
     try {
         const { id } = req.params;
