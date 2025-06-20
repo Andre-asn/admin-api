@@ -60,3 +60,44 @@ export const getModules = async (_req: Request, res: Response): Promise<void> =>
         });
     }
 };
+
+// Create a new module
+export const createModule = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { name, slug } = req.body;
+
+        if (!name) {
+            res.status(400).json({
+                success: false,
+                message: 'Module name is required'
+            });
+            return;
+        }
+
+        const { data: modules, error } = await supabase
+            .from('modules')
+            .insert([{ name, slug }])
+            .select();
+
+        if (error) {
+            res.status(500).json({
+                success: false,
+                message: 'Error creating module',
+                error: error.message
+            });
+            return;
+        }
+
+        res.json({
+            success: true,
+            message: 'Module created successfully',
+            data: modules
+        });
+    } catch (err: any) {
+        res.status(500).json({
+            success: false,
+            message: 'Error creating module',
+            error: err.message
+        });
+    }
+};
